@@ -1,0 +1,15 @@
+console.c:435:20:console_get_parameter	7
+console.c:379:13:console_history_command	2
+console.c:119:13:console_help_command	2
+console.c:429:13:console_arg_is	3
+console.c:318:6:console_example_command	4
+console.c:71:6:console_gps_command	11
+console.c:242:13:console_rm_command	3
+console.c:226:13:console_ls_command	2
+console.c:168:13:console_info_command	1
+console.c:128:13:console_clock_command	5
+console.c:209:13:console_test_command	1
+console.c:180:13:console_format_command	4
+console.c:265:13:console_cat_command	10
+console.c:506:6:console_init	1
+console.c:513:6:console_process_key	16

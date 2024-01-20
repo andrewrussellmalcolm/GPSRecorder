@@ -1,0 +1,52 @@
+eeschema (2013-05-31 BZR 4019)-stable  >> Creation date: 19/06/2013 12:28:07
+#Cmp ( order = Reference )
+| ANT1       A10137                          ;             
+| ANT2       WIRE_ANT                        ;             
+| C1         22u         KEMET C1206C107M9PACTU ; KEMET C1206C107M9PACTU 
+| C2         1u          ~                   ; ~           
+| C3         22u         TDK - C3225X5R0J226M/2.00 - CAPACITOR CERAMIC, 22UF, 6.3V, X5R, 20%, 1210 ; TDK - C3225X5R0J226M/2.00 - CAPACITOR CERAMIC, 22UF, 6.3V, X5R, 20%, 1210 
+| C4         100u                            ;             
+| C5         100n                            ;             
+| C6         C           ~                   ; ~           
+| C9         100n        ~                   ; ~           
+| D1         ZHCS2000                        ;             
+| L1         22uH        COILCRAFT - 1008PS-223KLB - INDUCTOR, PWR, 22UH, 0.44A,10%,26MHZ; COILCRAFT - 1008PS-223KLB - INDUCTOR, PWR, 22UH, 0.44A,10%,26MHZ
+| P1         CONN_2                          ;             
+| P2         CONN_6                          ;             
+| P3         CONN_4                          ;             
+| R1         10          ~                   ; ~           
+| R2         R                               ;             
+| R3         R           ~                   ; ~           
+| R4         R           ~                   ; ~           
+| U1         SP6641A     EXAR - SP6641AEK-L-3-3 - V REG, BOOST, 90MA, 3.3V, SOT23-5 ; EXAR - SP6641AEK-L-3-3 - V REG, BOOST, 90MA, 3.3V, SOT23-5 
+| U2         A2200-A     DOCUMENTATION       ; DOCUMENTATION
+| U3         PIC24F16KA102                    ;             
+| U4         ALPHA-TX                        ;             
+#End Cmp
+
+#Cmp ( order = Value )
+| A10137       ANT1      ;             
+| WIRE_ANT     ANT2      ;             
+| 100n         C5        ;             
+| 100n         C9        ; ~           
+| 1u           C2        ; ~           
+| 22u          C1        ; KEMET C1206C107M9PACTU 
+| 22u          C3        ; TDK - C3225X5R0J226M/2.00 - CAPACITOR CERAMIC, 22UF, 6.3V, X5R, 20%, 1210 
+| 100u         C4        ;             
+| C            C6        ; ~           
+| ZHCS2000     D1        ;             
+| 22uH         L1        ; COILCRAFT - 1008PS-223KLB - INDUCTOR, PWR, 22UH, 0.44A,10%,26MHZ
+| CONN_2       P1        ;             
+| CONN_6       P2        ;             
+| CONN_4       P3        ;             
+| 10           R1        ; ~           
+| R            R2        ;             
+| R            R3        ; ~           
+| R            R4        ; ~           
+| PIC24F16KA102 U3        ;             
+| ALPHA-TX     U4        ;             
+| A2200-A      U2        ; DOCUMENTATION
+| SP6641A      U1        ; EXAR - SP6641AEK-L-3-3 - V REG, BOOST, 90MA, 3.3V, SOT23-5 
+#End Cmp
+
+#End List

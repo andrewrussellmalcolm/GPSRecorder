@@ -1,0 +1,6 @@
+../Core/Src/fs.c:41:5:block_device_sync	0	static
+../Core/Src/fs.c:31:12:block_device_erase	16	static
+../Core/Src/fs.c:21:12:block_device_prog	24	static
+../Core/Src/fs.c:14:12:block_device_read	8	static
+../Core/Src/fs.c:73:6:fs_init	8	static
+../Core/Src/fs.c:107:6:append_to_current_file	128	static

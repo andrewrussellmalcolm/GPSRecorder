@@ -1,0 +1,10 @@
+../Core/Src/gps.c:28:14:nmea_to_decimal_degrees	40	static
+../Core/Src/gps.c:49:13:set_time_and_date	56	static
+../Core/Src/gps.c:59:13:rx_event_callback	16	static
+../Core/Src/gps.c:68:13:check_crc	24	static
+../Core/Src/gps.c:96:13:rx_error_callback	16	static
+../Core/Src/gps.c:102:6:gps_init	16	static
+../Core/Src/gps.c:123:6:gps_process_msg	552	static
+../Core/Src/gps.c:191:6:gps_set_standby	16	static
+../Core/Src/gps.c:197:6:gps_get_fix_obtained	8	static
+../Core/Src/gps.c:203:6:gps_set_debug	16	static

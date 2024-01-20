@@ -1,0 +1,7 @@
+fs.c:14:12:block_device_read	1
+fs.c:21:12:block_device_prog	1
+fs.c:31:12:block_device_erase	1
+fs.c:41:5:block_device_sync	1
+fs.c:73:6:fs_init	3
+fs.c:97:13:append_to_file	1
+fs.c:107:6:append_to_current_file	1

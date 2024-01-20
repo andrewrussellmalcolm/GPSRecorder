@@ -1,0 +1,14 @@
+flash.c:18:6:FSH_ResetEnable	1
+flash.c:28:6:FSH_Reset	1
+flash.c:38:6:FSH_GlobalUnlock	1
+flash.c:48:10:FSH_ReadJedecID	1
+flash.c:64:6:FSH_Read	1
+flash.c:80:6:FSH_EraseSector	1
+flash.c:90:6:FSH_EraseChip	1
+flash.c:100:6:FSH_ProgramPage	1
+flash.c:117:6:FSH_WriteEnable	1
+flash.c:127:6:FSH_WriteDisable	1
+flash.c:137:6:FSH_ClearBlockProtectionRegister	1
+flash.c:147:9:FSH_ReadStatus	1
+flash.c:159:9:FSH_ReadConfig	1
+flash.c:171:6:FSH_WaitWhileBusy	2

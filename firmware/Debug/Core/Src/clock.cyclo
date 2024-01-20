@@ -1,0 +1,2 @@
+clock.c:17:6:set_clock	1
+clock.c:27:6:get_clock	1

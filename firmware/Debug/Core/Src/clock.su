@@ -1,0 +1,2 @@
+../Core/Src/clock.c:17:6:set_clock	56	static
+../Core/Src/clock.c:27:6:get_clock	56	static

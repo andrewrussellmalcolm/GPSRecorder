@@ -1,0 +1,330 @@
+﻿@T: A tiny GPS position recorder 
+
+@D: Where’s my stuff been?
+
+@A: Andrew Malcolm
+
+@V:
+There are a variety of solutions available for tracking the location of things, some aimed at locating ‘lost’ items, such as smart dog collars, and Apple air tags, useful for locating your luggage. All these devices have to balance functionality, size and weight and time battery life (rechargeable or otherwise). A mobile phone makes a pretty good location device, as it has a GPS receiver and a radio transmitter. They are however relatively large, expensive, have unnecessary things such as displays, and rely on a cellphone network which may not be available in remote areas. Apple air tags rely on Bluetooth communication with other Apple devices in the vicinity to provide position information from their GPS and relay that data over the cellphone network back to the user’s phone. This is a very useful function and allows the the tags to be very small and operate from a small button cell. The drawback to this method is its reliance on other devices and again, the presence of a cell network.
+
+The device presented here is completely autonomous. The size of a matchbox, weighing less than 50 grammes (2oz for my American friends), it has its own GPS receiver and a small battery providing several days of operation, and a flash memory to store the GPS data acquired. As GPS coverage is worldwide in it various forms, no other infrastructure is required for operation. The downside is that the data is only available when the device is returned to the user. This is a compromise that will be acceptable for some applications, not others. It would be possible to combine this design with a low-power sub-GHz radio transmitter (868MHz LoRa, for example), but to get useful range the device would have to be significantly bigger and heavier, as the radio would need power to transmit messages. One potential application of the current design would be tracking the movements of a domestic pet, an animal in a zoological park or tracking the migratory patterns of wildlife. I personally use the device to record hikes I have made, as the maps overlaid with the track provide a concise reminder of the route taken.
+
+In common with all GPS devices, the receiver requires unobstructed view of the sky and concealed use is rarely practicable, so many movies are inaccurate in this respect. In a car, for example, the built-in GPS receiver we commonly refer to as the ‘sat-nav’ is typically installed on the dashboard or part of the rear-view mirror assembly at the top of the windscreen, where it has a clear ‘view’. It is also worth noting that reflections of the GPS signal from buildings and trees can lead to spurious location data, so some interpretation of the results may be required. Some sophisticated devices incorporate inertial navigation devices (gyroscopes and accelerometers) to augment data accuracy. This article demonstrates the design and construction of of a GPS receiver and recorder combined into a compact package along with a LiPo battery. The firmware and a Linux-based GUI application for visualising the data recorded is also described in detail.
+
+@ZT: Hardware design
+The core of the system is an STM32 microcontroller, specifically the STM32F072CBT6 [1]. There is a huge variety of microcontrollers on the market, so the choice of an appropriate device can daunting. Previous experience tells me that ST Microelectronics devices perform well at a good price point and are very well supported in terms of development tools and online resources. Having designed a great many projects around these devices, I also know that software development will be accelerated by my familiarity with the STM32 family and their development tools. This project could just as easily been based on an Arduino, a PIC or a Pi Pico, but, as I say choice comes down to familiarity and suitable package configurations with the required I/O. The key feature required in this case are low power, small physical size and serial, a real-time clock, USB and SPI connectivity.
+
+Schematic capture and PCB layout were both performed using KiCad, a free and open source CAD tool originally developed at CERN[2]. It really is an excellent suite of tools and handles the whole process of electronic design from schematic capture right through to generating files for manufacture. There is even a 3D viewer which generates a pan-able/rotatable image of your design, including the components. Although PCB layout is in 2D activity the ability to add 3D models of all the components and view the PCB assembly in a 3D viewer has saved me from mechanical clashes which are not apparent from the 2D design perspective. You can export the 3D model as a STEP file, and import that into 3D CAD tools such as FreeCAD [3], to build up more complex assemblies, aiding the design of parts such as enclosures, for example, suitable for 3D printing. There are many excellent PCB companies online who will build quality PCBs in a few days for less than five dollars/euros/pounds, so building prototype or experimental PCBs is not prohibitively expensive. Once the PCB design was complete in KiCad, a 3D model of the PCB assembly was exported into FreeCAD and an assembly created of the case to ensure all the assumptions about dimensions were correct. 
+The 3D model ensured mechanical dimensions all matched up. The case is shown in transparent mode here, showing the location of the USB connector and the battery. It’s a tight fit, but it does all go in the case! The model did identify a collision between the battery connector (to the right of the USB connector) and the battery itself. The solution was to omit the connector and solder the battery leads direct to the PCB. AS the battery is rechargeable, it should not require changing.        
+
+@Bi: 3D_model.png 
+
+@Bi: enclosure.png
+
+The microcontroller connects to the GPS module [4] via a serial UART. It connects to the 4 M byte flash memory [5] via an SPI bus and provides a virtual serial port connection to the host. 5V power is delivered over the USB interface and this is used to charge the 3.7V LiPo battery via a charger chip [6]. A low-dropout regulator provides the system with 3.3V from the raw LiPo voltage, powering the microcontroller, the flash memory and the GPS module. 
+
+The on-board battery charger manages the charge state of the LiPo battery, which is small enough at 45mm x 25mm x 8mm (1 ¾ x 1 x ¼ inch) to fit into the smallest plastic enclosure I could find, which measures 50mm x 35mm x 20mm (2 x 1 ½ x ¾ inch) (made by Hammond, see [12]). This still leaves room  for for the PCB containing all the circuitry. The battery charge power is derived from the USB interface. Once disconnected from the USB host, the unit runs for over 72 hours of continuous recording at 10 second intervals, without resorting to any power management in the firmware. Battery life could definitely be extended by implementing a sleep/wake cycle, at the expense of longer periods between data acquisition. As data is written directly to flash memory, no data is lost if the battery runs out of charge. Finally three LEDs are provided to indicate charge status, GPS fix obtained ans GPS message reception.
+
+The complete assembly is shown in the image below. The extra wires are for a debugger, and can be removed once the firmware is downloaded and debugged. The PCB can be seen, with all the components on the underside. The battery is a snug fit!
+
+@Bi:complete_assembly.png
+
+The full schematic for the final design is shown in the schematic.
+
+@Bi: schematic.png 
+
+@ZT: Firmware development
+I know the use of IDEs (integrated development environments) can be controversial and very much a matter of taste, and it’s certainly possible to do this type of microcontroller development without one. The ARM compilers and standard libraries can be downloaded from your distro’s repository and you’re off, using any editor that suits you and Make or Cmake, again, at your choice. Once you have a compiled binary, there are utilities for ST-Link to allow you to program your device, and you can use gbd to debug you program. If you don’t want to use the HAL (hardware abstraction layer) libraries provided by ST, you can generate your own header files with the addresses of the microcontroller registers and all the bit patterns required for configuration.
+Having said that, ST’s STM32CubeIDE [7], which is based on Eclipse, does streamline the process. It integrates ST’s CubeMX tool, a utility that allows you configure your microcontroller and generate a software framework that does all the initialization and leaves you with a blank ‘main()’ function to add your own code. You can label the pins of the microcontroller (bonus points if you use the same names as on the schematic!) The HAL libraries hide a lot of the complexity of setting up some of the peripherals, but are not perfect, so must be used with caution. There are lots of resources online showing how to use the IDE to set up the clocks, UARTs, timers USB ports and the like on an STM32 processor, including ST’s own getting started guide [8].
+
+@Bi: microcontroller_configuration.png
+
+Here is the pin configuration for this design, and an example of a USART setup. Once saved, the IDE will then generate a set of #defines for the I/O pins that you can use in your code, and a complete set of initialization routines. At this point, you can continue to use the IDE, or ignore it and use Make with the generated Makefile. However, if you stay with the IDE and have your hardware connected via an ST-Link programmer, a single mouse click in the will compile, download and run your code. This level of pre-configuration (including, if you wish, the inclusion of an RTOS such as FreeRTOS), can leave you free to concentrate on your application code. In a commercial environment, time-to-market is everything, and time savings like this can be invaluable.
+
+@ZT: Firmware
+The firmware manages the initialisation of the external devices (GPS, flash), its internal USB port and other peripherals. After the initialisation, the firmware manages data flow from the GPS receiver to flash memory, and, when the device is connected to USB, responds to commands sent over the virtual serial bus to deliver data to a host computer.
+
+The GPS module has an UART interface that operates by default at 9600 baud. Once powered up, the module starts to emit GPS 'sentences' (see [9]), which contain status and location information. It is possible to configure the module by sending configuration packets (see[10]) to for instance, change the frequency of the location updates. Messages in both directions are checksummed, and a calculator to check checksum calculations is available at [11]. All the incoming sentences are timestamped and this time is used to set the system clock, as well as to generate date-based filenames for storing the location data. The data is in ASCII format which means they are human readable. The data is received by the microcontroller in an interrupt service routine, and a typical burst of sentences that arrive at N-second intervals may be as much as 500 bytes, though much of this is discarded, or suppressed by configuration. In any case the processing required is too complex to be performed in the interrupt service routine, so it’s put in a queue. The main program loop checks the queue at regular intervals, pulls off any data available, processes it and if appropriate writes the digest to flash. The ‘elasticity’ provided by the queue means is the main program loop is busy, for instance sending data over USB, incoming data will not be lost. 
+
+@LI: debug data available at the console, showing a complete GPS sentence
+$ fix data became valid time and date set to 082853.000 on 020124
+$ $GNRMC,082903.000,A,5120.7303,N,00042.7242,W,1.27,209.74,020124,,,A*6F
+
+The microcontroller communicates with the external 4Mbyte flash chip over an SPI bus. SPI commands include reading and writing sectors, erasing the entire chip and erasing blocks of memory for re-use. Flash write operations are relatively slow, so again it is useful to be able to buffer the incoming data.
+
+@Bi:data_flow.png 
+
+The incoming data from the GPS receiver is parsed to extract the data of interest, balancing completeness of data against storage requirements in flash. As the data is delivered in ASCII, it was decided to store the data in ASCII to avoid conversion and so that the data remains human-readable. So each GPS location message received is reduced to 5 numbers: a timestamp, a latitude, longitude a speed and a heading. The last two are not strictly necessary but do help to weed out the more obvious erroneous data. In summary, the location data is stored in tab-separated records of 5 numbers:
+
+@LI: some example data illustrating the format stored 
+84551	51.345459	-0.711883	0.236644	122.980003
+84601	51.345448	-0.711883	0.920855	135.509995
+84611	51.345440	-0.711855	0.468144	155.309998
+84621	51.345444	-0.711878	0.318955	240.389999
+84631	51.345470	-0.711900	0.241789	203.100006
+
+In order simplify and organise the storage of the GPS data on the flash device a file system is employed. There are a number of open source implementations of file systems for embedded flash devices and SD cards available. littlefs [13] 
+was chosen as it implements flash wear levelling. The other flash file systems available for STM architectures, notably FATFS [14], an implementation of the venerable FAT file system, is more suitable to removable SD cards as the lack of wear levelling will cause the card to fail eventually. littlefs provides a familiar UNIX-like programming API with function calls such as open, read, write close, mount, format etc.  Porting it to the unit's flash memory involved setting some size parameters in a configuration file and providing low-level (SPI) read, write and erase routines to interface to the flash memory.
+
+One part of the GPS message that is not stored explicitly is the ‘fix obtained’ flag. This is set once the GPS receiver can see sufficient satellites to be confident in its data. The flag is used as a trigger to set the system clock from the GPS data. From that point on, the parsed data is appended to a file with a name of the format DD_MM_YY, so when the clock rolls over at midnight a new file is created and recording continues. Over time, the root of the file system fills with files containing each day’s GPS records. At around 50 bytes per record, that’s about 10 days of data for the current flash chip if recording continuously. There are of course mush bigger devices available, and for the current design going from 4Mbyte to 16Mbye is possible without relaying out the board. The host application described later allows the user to archive off data files for later review, thus freeing up flash memory for more data.
+
+The following listing shows the routine that processes GPS messages from the queue and write the processed data to the current file:
+
+@LI:
+/** */
+void gps_process_msg(void)
+{
+	static uint8_t buffer[512];
+
+	static bool fix_valid = false;
+	while(queue_size(queue))
+	{
+		queue_get(queue,buffer, sizeof(buffer));
+
+		char time[16];
+		char date[16];
+		char latitude[16];
+		char longitude[16];
+		char speed[16];
+		char course[16];
+		char valid, ns,ew;
+
+		if(debug)
+		{
+			printf("%s\n$ ", buffer);
+		}
+
+		if(check_crc(buffer, sizeof(buffer)))
+		{
+			int n = sscanf((char *)buffer,"$GNRMC,%[^,],%c,%[^,],%c,%[^,],%c,%[^,],%[^,],%[^,]",time, &valid, latitude, &ns,longitude, &ew, speed, course, date);
+
+			if(n >= 2 && valid == 'A')
+			{
+				if(!fix_valid)
+				{
+					fix_valid = true;
+					set_time_and_date(time, date);
+
+					if(debug)
+					{
+						printf("fix data became valid time and date set to %s on %s\n$ ", time, date );
+					}
+				}
+
+				float decimal_latitude = nmea_to_decimal_degrees(latitude, ns);
+				float decimal_longitude = nmea_to_decimal_degrees(longitude, ew);
+				float decimal_speed = atof(speed);
+				float decimal_course = atof(course);
+				char buffer[330];
+				int length = sprintf(buffer,"%.6s\t%12.8f\t%12.8f\t%12.8f\t%12.8f\n", time, decimal_latitude, decimal_longitude, decimal_speed, decimal_course);
+
+				append_to_current_file(buffer, length);
+			}
+
+			if(n < 2 || valid != 'A')
+			{
+				if(fix_valid)
+				{
+					fix_valid = false;
+					if(debug)
+					{
+						printf("fix no longer valid\n$ ");
+					}
+				}
+			}
+		}
+	}
+
+	// turn on an LED when fix obtained
+	HAL_GPIO_WritePin(LED1_GPIO_Port, LED1_Pin, !gps_get_fix_obtained());
+}
+
+It will be apparent that some conversion of coordinates is taking place here. GPS sentences contain coordinates in NMEA format (see [15],[16]). The format for NMEA coordinates is (d)ddmm.mmmm d=degrees and m=minutes. East or west are specified in another field in the sentence. The following listing shows the conversion.
+
+@LI: NMEA to decimal coordinate conversion
+
+/** */
+static float nmea_to_decimal_degrees(char *nmea,char nsew)
+{
+	float decimal = 0;
+	if(strlen(nmea)>5)
+	{
+		char integer_part[3+1];
+		int digit_count = (nmea[4] == '.' ? 2 : 3);
+		memcpy(integer_part, nmea, digit_count);
+		integer_part[digit_count] = 0;
+		nmea += digit_count;
+
+		decimal = atoi(integer_part) + atof(nmea)/60.0f;
+		if(nsew == 'W' || nsew == 'S')
+		{
+			decimal = -decimal;
+		}
+	}
+	return decimal;
+
+@Bi: program_flow.png
+
+@ZT:Linux-like console
+The USB interface is configured as a virtual serial port, and on Linux systems it will appears as /dev/ttyACM0 (or /dev/ttyACM1 etc.). You can connect to this port from a Linux host using a terminal emulator such as minicom, or programmatically using the usual file semantics such as open/read/write and close. We will see late how we can use this to advantage.  
+The firmware implements a familiar command line interface, with a few Linux-like commands such as ‘ls’, ‘cat’ and ‘rm’. This was very helpful during debugging, to know what files had been generated and to print them to the screen. Later on, when the GUI was developed, the same interface was used from within the Linux host, opening the USB device an issuing the same commands. This means the same interface serves both as an interactive command-line-like interface and an API which the host program can use.
+
+@Bi: command_line.png
+
+@ZT: The host application
+The Linux host application is written in C using GTK+ to provide a graphical user interface. The main visual element of the application is a map overlaid with the location data in the form of a track. The maps are uploaded from Open Street Maps using an excellent open-source library osm-gps-map [17]. This was chosen over Google maps as the latter requires a (paid) API key to embed Google maps in an external application. OSM does not have satellite image data, but the maps themselves are detailed and accurate.
+
+All the details of loading maps are handled by this library along with rendering the maps to a GTK+ widget. You can scroll around the map, encompassing the whole world, zooming in and out in a manner familiar from Google Maps. (The OSM library caches maps in your /tmp folder, and there map be some delay in displaying maps as you scroll outside of already cached areas).
+The API allows the user to add tracks in the form of a sequence of points expressed in coordinates. As the map notifies the application of mouse clicks an other events, if you click on or close to a point on the track, application code will display a popup giving exact coordinates and a timestamp of when the point was visited.
+Layout of the various GTK widgets is provided by three nested GTK_BOX layout widgets, to layout the file list to the left of the main map widget and the various controls below. A status bar at the bottom of the application window indicates the number of points loaded to form the current track, and a status button to the right gives live information of free space on the flash drive and the status of the GPS module. 
+ 
+@Bi:status_screen.png
+
+When the application starts is checks for the presence of the device by attempting to open /dev/ttyACM0. If the device is available, the application issues the ‘ls’ command to get a list of files available on the device. These are named in the form DD_MM_YY, so the date of interest is easy to identify. These filenames (and their sizes) are displayed in a list to the left of the application. If the user right-clicks on a selected file, a popup menu appears allowing the user to delete a file or save it to the local disc via file-chooser window. Double clicking on the selected row will cause the location data to be plotted on the map to the right. The map’s home location is stored in an ini file, which defaults to Greenwich, UK, home of the time meridian, but that can be changed at any time to anywhere in the world by double clicking on the desired home location on the map.
+
+@Bi: reset_home.png
+
+The following image is a typical track obtained from a recent car journey on Christmas eve.
+
+@Bi: host_application.png 
+
+This listing demonstrates communication with the device over the virtual serial link, issuing the ‘cat’ command and delivering the data to the caller by way of a callback (pointer to function). The code reads each line from the file in turn until a blank line is returned (a single carriage return character), indicating the end of the file. 
+
+@LI: 
+
+// define the callback function
+typedef void (*pf_add_point_t)( long time, double latitude, double longitude, double speed, double course);
+
+/** */
+void gps_recorder_device_list_file_points(FILE * device, char *filename, pf_add_point_t add_point)
+{
+	char buffer[64];
+	double latitude;
+	double longitude;
+	double speed;
+	double course;
+	long time;
+
+	int points = 0;
+
+	fprintf(device, "cat %s\r", filename);
+
+	while(true)
+	{
+		fgets(buffer, sizeof(buffer), device);
+
+		if((strlen(buffer) == 1) && (points > 0))
+		{
+			break;
+		}
+
+		int n = sscanf(buffer,"%ld\t%lf\t%lf\t%lf\t%lf", &time, &latitude, &longitude, &speed, &course);
+
+		speed *= knot_to_ms;
+
+		if(n == 5)
+		{
+			add_point( time, latitude, longitude, speed, course);
+			points++;
+		}
+	}
+}
+
+This listing shows the use of the above routine in the GUI code
+@Li:
+
+/** */
+static void file_tree_view_row_activated(...)
+{
+   …. 
+	/** local function used as callback */
+	void add_point_to_map(long time, double latitude, double longitude, double speed, double course)
+	{
+		OsmGpsMapPoint *map_point = osm_gps_map_point_new_degrees(latitude, longitude);
+		osm_gps_map_point_set_user_data(map_point, (void*) time);
+		osm_gps_map_track_add_point(track, map_point);
+
+		char buffer[32];
+		sprintf(buffer, "%d points displayed", ++points);
+		gtk_label_set_text(GTK_LABEL(app_data->status_label), buffer);
+
+		while (gtk_events_pending())
+		{
+			gtk_main_iteration_do(true);
+		}
+	}
+
+	// call the list function passing a pointer to the local function above.
+	gps_recorder_device_list_file_points(app_data->device, filename, add_point_to_map);
+}
+
+@ZT: Wrap up
+This GPS recorder was an interesting project: once it can see the GPS satellites, it will record its location every 10 seconds until the flash memory fills up. I think it’s sometimes very instructive to build from scratch what is a familiar item: after all, we often use ‘sat-nav’ and phone geo-location in our everyday lives, but this project was an opportunity to deconstruct a seemingly complex system that is often overlaid with so much software and visual context that it is easy to lose sight of the underlying technology. 
+The host application dos not process the data in any way, but there is some scope for filtering the data based on the speed and heading data, as well as by applying more sophisticated filtering by look at the data as a whole rather than as discrete items. There’s quite a lot of information about these techniques available, and the interested reader is encouraged to search  online.
+The completed design, both hardware and software, can be found at my github page[18].
+
+@ZT:References
+
+[1]STM32F072CBT6
+<U>https://www.st.com/resource/en/datasheet/stm32f072cb.pdf<U>
+
+[2]KiCad:
+<U>https://home.cern/news/news/computing/kicad-software-gets-cern-treatment<U>
+
+[3]FreeCad
+<U>https://www.freecad.org/<U>
+
+[4]M20050-1 
+<U>https://www.antenova.com/product/gps-radionova-rf-antenna-module/<U>
+(registration required)
+
+[5]SST26VF032B
+<U>https://ww1.microchip.com/downloads/en/devicedoc/20005218e.pdf<U>
+
+[6]CN3085
+<U>https://radiolux.com.ua/files/pdf/CN3085.pdf<U>
+
+[7]STM32CubeIDE: 
+<U>https://www.st.com/en/development-tools/stm32cubeide.html<U>
+
+[8]STM32CubeIDE getting started
+<U>https://wiki.st.com/stm32mpu/wiki/How_to_get_started_with_STM32CubeIDE_from_scratch<U>
+
+[9]GPS sentences
+<U>https://www.antenova.com/product/gps-radionova-rf-antenna-module/<U>
+(registration required)
+
+[10]GPS configuration packets 
+<U>https://www.antenova.com/product/gps-radionova-rf-antenna-module/<U>
+(registration required)
+
+[11]NMEA checksum calculator
+<U>https://nmeachecksum.eqth.net/<U>
+
+[12]Hammond 1551 enclosure
+<U>https://www.hammondmfg.com/dwg9TBU.htm<U>
+
+[13]littlefs
+<U>littlefs https://github.com/littlefs-project/littlefs<U>
+
+[14]FATFS 
+<U>http://elm-chan.org/fsw/ff/<U>
+
+[15]GPS information
+<U>https://www.gpsworld.com/what-exactly-is-gps-nmea-data/<U>
+
+[16]GPS performance
+<U>https://www.gps.gov/systems/gps/performance/accuracy/<U>
+
+[17]Open street map API 
+<U>https://nzjrs.github.io/osm-gps-map/docs/reference/html/OsmGpsMap.html<U>
+
+[18]Author's github project page 
+<U>https://github.com/andrewrussellmalcolm/GPSRecorder<U>
+
+@IT: About the author
+
+@Bi: author_pic.jpg
+
+Andrew Malcolm (MIET, CEng) is a retired hardware and firmware engineer. He maintains a keen interest in engineering in general and building embedded projects like this one in particular. He is a keen user of Linux and all the open source and free engineering tools available for it.
+He can be contacted on andrewrussellmalcolm@gmail.com
